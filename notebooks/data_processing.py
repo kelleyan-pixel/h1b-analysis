@@ -149,6 +149,12 @@ for f in files:
         wage_from = df['WAGE_RATE_OF_PAY_FROM'].apply(clean_wage)
         wage_to = df['WAGE_RATE_OF_PAY_TO'].apply(clean_wage)
 
+        mask = df["WAGE_RATE_OF_PAY_TO"] == 0
+        df.loc[mask, "WAGE_RATE_OF_PAY_TO"] = df.loc[mask, "WAGE_RATE_OF_PAY_FROM"]
+
+        wage_from = df['WAGE_RATE_OF_PAY_FROM'].apply(clean_wage)
+        wage_to = df['WAGE_RATE_OF_PAY_TO'].apply(clean_wage)
+
         df['WAGE_RATE_OF_PAY'] = pd.concat([wage_from, wage_to], axis=1).mean(axis=1)
 
     elif 'WAGE_RATE_OF_PAY' in df.columns:
@@ -224,11 +230,68 @@ df['EMPLOYMENT_START_DATE'] = pd.to_datetime(df['EMPLOYMENT_START_DATE'], errors
 df['year'] = df['CASE_SUBMITTED'].dt.year
 df['month'] = df['CASE_SUBMITTED'].dt.month
 
-df.to_parquet("../data/final_cleaned1.parquet", index=False)
-df = pd.read_parquet("../data/final_cleaned1.parquet", engine="fastparquet")  # re-read to ensure clean types
+df.to_parquet("../data/final_cleaned.parquet", index=False)
+df = pd.read_parquet("../data/final_cleaned.parquet", engine="fastparquet")  # re-read to ensure clean types
 
 print("\nFINAL SHAPE:", df.shape)
 
 df['EMPLOYER_NAME_CLEAN'] = df['EMPLOYER_NAME'].apply(clean_employer_name)
 
-df.to_parquet("../data/final_cleaned1.parquet", index=False)
+state_map = {
+    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
+    'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',
+    'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii', 'ID': 'Idaho',
+    'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa', 'KS': 'Kansas',
+    'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi',
+    'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada',
+    'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico', 'NY': 'New York',
+    'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio', 'OK': 'Oklahoma',
+    'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island',
+    'SC': 'South Carolina', 'SD': 'South Dakota', 'TN': 'Tennessee',
+    'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont', 'VA': 'Virginia',
+    'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
+    'DC': 'District of Columbia'
+}
+
+df.WORKSITE_STATE = df.WORKSITE_STATE.map(state_map).fillna(df.WORKSITE_STATE).str.upper()
+df = df.dropna(subset=['WAGE_RATE_OF_PAY', 'PREVAILING_WAGE'])  # drop rows with missing wage data
+df = df[(df.WAGE_RATE_OF_PAY > 0) & (df.PREVAILING_WAGE > 0)]  # filter out non-positive wages
+df = df[df.WAGE_RATE_OF_PAY <10**7]  # filter out likely incorrect wages 
+df['log_wage'] = np.log(df['WAGE_RATE_OF_PAY'])
+df['wage_ratio'] = df['WAGE_RATE_OF_PAY'] / df['PREVAILING_WAGE']
+
+soc_title_map = (
+    df
+    .groupby(["SOC_CODE", "SOC_TITLE"])  # change SOC_NAME if needed
+    .size()
+    .reset_index(name="count")
+    .sort_values(["SOC_CODE", "count"], ascending=[True, False])
+    .drop_duplicates("SOC_CODE")
+    .set_index("SOC_CODE")["SOC_TITLE"]
+)
+
+df["SOC_TITLE_CLEAN"] = df["SOC_CODE"].map(soc_title_map)
+
+df["WAGE_LEVEL_CLEAN"] = (
+    df["WAGE_LEVEL"]
+    .astype(str)
+    .str.strip()
+    .str.upper()
+)
+
+mapping = {
+    "LEVEL I": "I",
+    "LEVEL II": "II",
+    "LEVEL III": "III",
+    "LEVEL IV": "IV",
+    "I": "I",
+    "II": "II",
+    "III": "III",
+    "IV": "IV"
+}
+
+df["WAGE_LEVEL_CLEAN"] = df["WAGE_LEVEL_CLEAN"].map(mapping)
+
+
+df.to_parquet("../data/final_cleaned.parquet", index=False)
