@@ -129,7 +129,8 @@ for f in files:
         "WILLFUL VIOLATOR":"WILLFUL_VIOLATOR", "LCA_CASE_SUBMITTED":"CASE_SUBMITTED", "LCA_CASE_EMPLOYER_CITY":"EMPLOYER_CITY",
         "LCA_CASE_EMPLOYMENT_START_DATE":"EMPLOYMENT_START_DATE", "LCA_CASE_EMPLOYER_NAME":"EMPLOYER_NAME",
         "WORK_LOCATION_CITY1":"WORKSITE_CITY", "WORK_LOCATION_STATE1":"WORKSITE_STATE", "WORK_LOCATION_COUNTY1":"WORKSITE_COUNTY",
-        "LCA_CASE_SUBMIT":"CASE_SUBMITTED",'PERIOD_OF_EMPLOYMENT_START_DATE':"EMPLOYMENT_START_DATE"
+        "LCA_CASE_SUBMIT":"CASE_SUBMITTED",'PERIOD_OF_EMPLOYMENT_START_DATE':"EMPLOYMENT_START_DATE","PW_WAGE_LEVEL":"WAGE_LEVEL",
+        "PW_WAGE_LEVEL_1":"WAGE_LEVEL"
     }
 
     df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
@@ -171,6 +172,12 @@ for f in files:
 
     df['WAGE_RATE_OF_PAY'] = df['WAGE_RATE_OF_PAY'] * mult
 
+    if 'WAGE_RATE_OF_PAY_FROM' in df.columns:
+        df["WAGE_RATE_OF_PAY_FROM"] = pd.to_numeric(df["WAGE_RATE_OF_PAY_FROM"],errors="coerce")
+        df["WAGE_RATE_OF_PAY_TO"] = pd.to_numeric(df["WAGE_RATE_OF_PAY_TO"],errors="coerce")
+        df['WAGE_RATE_OF_PAY_FROM'] = df['WAGE_RATE_OF_PAY_FROM'] * mult
+        df['WAGE_RATE_OF_PAY_TO'] = df['WAGE_RATE_OF_PAY_TO'] * mult
+
     if 'PW_UNIT_OF_PAY' in df.columns:
         mult = df['PW_UNIT_OF_PAY'].map(rate_to_mult)
     else:
@@ -189,7 +196,7 @@ for f in files:
         'CASE_NUMBER','CASE_SUBMITTED','EMPLOYMENT_START_DATE','EMPLOYER_NAME','EMPLOYER_CITY','EMPLOYER_STATE',
         'JOB_TITLE','SOC_CODE','SOC_NAME','PREVAILING_WAGE','WAGE_RATE_OF_PAY',
         'WILLFUL_VIOLATOR','WORKSITE_CITY','WORKSITE_COUNTY','WORKSITE_STATE','SOC_TITLE',
-        'NAICS_CODE'
+        'NAICS_CODE','WAGE_RATE_OF_PAY_TO','WAGE_RATE_OF_PAY_FROM','WAGE_LEVEL'
     ]
 
     df = df[[col for col in cols_to_keep if col in df.columns]]
@@ -217,11 +224,11 @@ df['EMPLOYMENT_START_DATE'] = pd.to_datetime(df['EMPLOYMENT_START_DATE'], errors
 df['year'] = df['CASE_SUBMITTED'].dt.year
 df['month'] = df['CASE_SUBMITTED'].dt.month
 
-df.to_parquet("../data/final_cleaned.parquet", index=False)
-df = pd.read_parquet("../data/final_cleaned.parquet", engine="fastparquet")  # re-read to ensure clean types
+df.to_parquet("../data/final_cleaned1.parquet", index=False)
+df = pd.read_parquet("../data/final_cleaned1.parquet", engine="fastparquet")  # re-read to ensure clean types
 
 print("\nFINAL SHAPE:", df.shape)
 
 df['EMPLOYER_NAME_CLEAN'] = df['EMPLOYER_NAME'].apply(clean_employer_name)
 
-df.to_parquet("../data/final_cleaned.parquet", index=False)
+df.to_parquet("../data/final_cleaned1.parquet", index=False)
