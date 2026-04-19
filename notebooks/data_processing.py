@@ -130,7 +130,8 @@ for f in files:
         "LCA_CASE_EMPLOYMENT_START_DATE":"EMPLOYMENT_START_DATE", "LCA_CASE_EMPLOYER_NAME":"EMPLOYER_NAME",
         "WORK_LOCATION_CITY1":"WORKSITE_CITY", "WORK_LOCATION_STATE1":"WORKSITE_STATE", "WORK_LOCATION_COUNTY1":"WORKSITE_COUNTY",
         "LCA_CASE_SUBMIT":"CASE_SUBMITTED",'PERIOD_OF_EMPLOYMENT_START_DATE':"EMPLOYMENT_START_DATE","PW_WAGE_LEVEL":"WAGE_LEVEL",
-        "PW_WAGE_LEVEL_1":"WAGE_LEVEL"
+        "PW_WAGE_LEVEL_1":"WAGE_LEVEL","PW_WAGE_SOURCE":"PW_SOURCE","PW_OTHER_SOURCE_1":"PW_SOURCE","PW_SOURCE_1":"PW_SOURCE",
+        "PW_OTHER_SOURCE":"PW_SOURCE"
     }
 
     df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
@@ -202,7 +203,7 @@ for f in files:
         'CASE_NUMBER','CASE_SUBMITTED','EMPLOYMENT_START_DATE','EMPLOYER_NAME','EMPLOYER_CITY','EMPLOYER_STATE',
         'JOB_TITLE','SOC_CODE','SOC_NAME','PREVAILING_WAGE','WAGE_RATE_OF_PAY',
         'WILLFUL_VIOLATOR','WORKSITE_CITY','WORKSITE_COUNTY','WORKSITE_STATE','SOC_TITLE',
-        'NAICS_CODE','WAGE_RATE_OF_PAY_TO','WAGE_RATE_OF_PAY_FROM','WAGE_LEVEL'
+        'NAICS_CODE','WAGE_RATE_OF_PAY_TO','WAGE_RATE_OF_PAY_FROM','WAGE_LEVEL','PW_SOURCE'
     ]
 
     df = df[[col for col in cols_to_keep if col in df.columns]]
@@ -258,6 +259,7 @@ df.WORKSITE_STATE = df.WORKSITE_STATE.map(state_map).fillna(df.WORKSITE_STATE).s
 df = df.dropna(subset=['WAGE_RATE_OF_PAY', 'PREVAILING_WAGE'])  # drop rows with missing wage data
 df = df[(df.WAGE_RATE_OF_PAY > 0) & (df.PREVAILING_WAGE > 0)]  # filter out non-positive wages
 df = df[df.WAGE_RATE_OF_PAY <10**7]  # filter out likely incorrect wages 
+df.loc[df["WAGE_RATE_OF_PAY_TO"] == 0, "WAGE_RATE_OF_PAY"] *= 2
 df['log_wage'] = np.log(df['WAGE_RATE_OF_PAY'])
 df['wage_ratio'] = df['WAGE_RATE_OF_PAY'] / df['PREVAILING_WAGE']
 
